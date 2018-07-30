@@ -32,9 +32,9 @@ use IEEE.NUMERIC_STD.ALL;
 entity orx_mode_generator is
     Generic(
            PERIOD_1US       : natural := 304;   -- 1 us = 304 cycle of clock 307.2 MHz
-           T_MODE_SETUP     : natural := 2;     -- unit: us
-           T_MODE_HOLD      : natural := 3;
-           T_MODE_ACK       : natural := 3
+           T_MODE_SETUP     : natural := 1;     -- unit: us
+           T_MODE_HOLD      : natural := 2;
+           T_MODE_ACK       : natural := 2
     );
     Port ( rst_n            : in STD_LOGIC;
            clk              : in STD_LOGIC;
@@ -79,105 +79,96 @@ constant T_MODE_SETUP_IN_CYCLES : integer := T_MODE_SETUP * PERIOD_1US;
 constant T_MODE_HOLD_IN_CYCLES  : integer := T_MODE_HOLD * PERIOD_1US;
 constant T_MODE_ACK_IN_CYCLES   : integer := T_MODE_ACK * PERIOD_1US;
 
-
 --
-signal rst_counter  : std_logic;
-signal cnt          : integer;
-signal enb_cnt      : std_logic;
 signal no_ack       : std_logic;
 
 -- Register stores orx modes (00: ORX1, 01: ORX2, OTHERWISE: INTERNAL CALIB)
-signal mode_reg     : std_logic_vector( 1 downto 0 );
+--signal mode_reg     : std_logic_vector( 1 downto 0 );
+signal orx_mode_reg : std_logic_vector(2 downto 0);
 
 -- Determine which antenna of AD9371 need to be observed (0: antenna 1, 1: antenna 2)
 signal srx_user_reg : std_logic;
 signal srx_valid_reg: std_logic;
 signal din_ready_reg: std_logic;
 
--- This counter changes its value each 1 us
+signal timer        : integer range 0 to T_MODE_ACK_IN_CYCLES;
+signal ready4newreq_reg :   std_logic;
 begin
-counter_logic: process(clk)
-begin
-    if rising_edge( clk ) then
-        if rst_counter  = '1' then
-            cnt <= 0;
-        elsif enb_cnt = '1' then
-            cnt <= cnt + 1;
-        else
-            cnt <= cnt;
-        end if;
-    end if;
-end process counter_logic;
-
+--------------------------------------------------------------------------------
 -- FSM to control MODE generator
-state_logic:process(clk, rst_n)
+--------------------------------------------------------------------------------
+state_logic:process( clk )
+variable count      : integer range 0 to T_MODE_ACK_IN_CYCLES;
 begin
     if rising_edge(clk) then
         if( rst_n = '0' ) then
+            count       := 0;
             pre_state   <= init;
-        else
+        elsif ( count >= timer ) then
+            count       := 0;
             pre_state   <= nx_state;
+        else
+            count       := count + 1;
         end if;
     end if;
 end process state_logic;
 
-state_def:process( pre_state, cnt, din_tvalid, ready2trigger, orx_ack )
+--******************************************************************************
+--                      FSM definition                                        --
+--******************************************************************************
+state_def:process( pre_state, din_tvalid, ready2trigger)
+-- Register stores orx modes (00: ORX1, 01: ORX2, OTHERWISE: INTERNAL CALIB)
+variable mode_reg   : std_logic_vector( 1 downto 0 );
 begin
-case pre_state is 
+-------------------------------------------------------
+-- default values - prevent infering unintended latches
+-------------------------------------------------------
+ready4newreq_reg            <= '0';
+timer                       <= 0;
+
+-------------------------------------------------------
+-- state definition
+-------------------------------------------------------
+case pre_state is
     when init   =>
-        ready4newrequest  <= '1';
-        no_ack      <= '0';
+        ready4newreq_reg    <= '1';
+        timer               <= 0;
         
-        rst_counter <= '1';
-        enb_cnt     <= '0';
-        enb_trigger <= '0';
-        
-        din_ready_reg   <= '0';
-        srx_valid_reg   <= '0';
-        
-        no_ack      <= '0';
-        
-        if( din_tvalid = '1' ) then -- sampling input data
-            nx_state    <= mode;
-            mode_reg    <= din_tdata;
+        if( din_tvalid = '1' ) then     -- sampling input data
+            nx_state        <= mode;
+            --mode_reg        := din_tdata;
+            case din_tdata is
+                when "00"   =>
+                    orx_mode_reg    <= ORX1;
+                when "01"   => 
+                    orx_mode_reg    <= ORX2;
+                when others => 
+                    orx_mode_reg    <= ARM_CALIB;
+            end case;
         else
-            nx_state    <= init;
-            mode_reg    <= "11";    -- default: arm calibration
+            nx_state        <= init;
+            mode_reg        := "11";    -- default: arm calibration
         end if;
         
     when mode   => 
-        ready4newrequest    <= '0';
+        ready4newreq_reg    <= '0';
+        timer               <= 0;
+        nx_state            <= setup_time;
+
         
-        rst_counter <= '0';
-        enb_cnt     <= '0';
-        enb_trigger <= '0';
-        
-        case mode_reg is
-            when "00" =>
-                orx_mode    <= ORX1;
-            when "01" => 
-                orx_mode    <= ORX2;
-            when others => 
-                orx_mode    <= ARM_CALIB;
-        end case;
-        
-        nx_state    <= setup_time;
         
     when setup_time =>
-        rst_counter <= '0';
-        enb_cnt     <= '1';
+        timer       <= 1;
         enb_trigger <= '0';
         nx_state    <= setup_time;
         
-        if( cnt >=  T_MODE_SETUP_IN_CYCLES ) AND ( ready2trigger = '1' ) then
-            rst_counter <= '1';
-            enb_cnt     <= '0';
+        timer       <= T_MODE_SETUP_IN_CYCLES;
+        if( ready2trigger = '1' ) then
             nx_state    <= enable_trigger;
         end if;
         
     when enable_trigger =>
-        rst_counter <= '0';
-        enb_cnt     <= '0';
+        timer       <= 1;
         enb_trigger <= '1';
         
         nx_state   <= hold_time;
@@ -233,11 +224,23 @@ case pre_state is
         if( ready2trigger = '1' ) then
             nx_state        <= init;
         end if;
-        
+    
+    when set_all_2_arm_calib =>
+        orx_mode            <= ARM_CALIB;
+
     when OTHERS =>  null;
         
 end case;
 end process state_def;
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+output_free_glitches:process( clk )
+begin
+    if rising_edge( clk ) then
+        ready4newrequest    <= ready4newreq_reg;
+        orx_mode            <= orx_mode_reg;
+    end if;
+end process output_free_glitches;
 
 din_tready      <= din_ready_reg;
 dout_srx_tuser  <= srx_user_reg;
