@@ -125,48 +125,36 @@ signal din_tready_reg           :   std_logic_vector( 3 downto 0 );
 signal trigger_gen_ready        :   std_logic_vector( 3 downto 0 );
 signal trigger_gen_enb          :   std_logic_vector( 3 downto 0 );
 -------------------------------------------------------------------
--- PROGRAMMABLE DELAY
-signal cnt                      :   integer;
-signal enb_cnt                  :   std_logic;
-signal rst_counter              :   std_logic;
 --=================================================================
 signal ant2calib                :   integer range 0 to 7 := 0;
-signal ad2calib                 :   integer range 0 to 3 := 0; -- calibrate this antenna
+signal ad2calib                 :   integer range 0 to 3 := 0;      -- calibrate this antenna
 
+signal timer                    :   integer range 0 to 5;           -- can phai sua lai
 begin           
 --========================= CONTROL ==============================                                               
-counter_logic: process(clk)
+state_logic: process( clk )
+variable count  : integer range 0 to 5;                             -- can phai sua lai range
 begin
-    if rising_edge( clk ) then
-        if rst_counter  = '1' then
-            cnt <= 0;
-        elsif enb_cnt = '1' then
-            cnt <= cnt + 1;
-        else
-            cnt <= cnt;
-        end if;
+  if rising_edge(clk) then
+    if( rst_n = '0' ) then
+      pre_state   <= init;
+      count       := 0;
+    elsif ( count >= timer ) then
+      pre_state   <= nx_state;
+      count       := 0;
+    else
+      count := count + 1;
     end if;
-end process counter_logic;
-
-state_logic: process( clk, rst_n )
-begin
-    if rising_edge(clk) then
-        if( rst_n = '0' ) then
-            pre_state   <= init;
-        else
-            pre_state   <= nx_state;
-        end if;
-    end if;
+  end if;
 end process state_logic;
 
-comb_logic: process (pre_state, s_axis_srx_ctrl_tvalid, din_tready_reg, cnt )
-variable no_ad9371          :   std_logic_vector( 1 downto 0 ); -- get ORX data from which ad9371 board? - for ORX mode
-variable no_anten           :   std_logic_vector( 2 downto 0 )  := "000"; -- in this ad9371, get ORX data from which antenna?
+comb_logic: process ( pre_state, s_axis_srx_ctrl_tvalid, din_tready_reg )
+variable no_ad9371          :   std_logic_vector( 1 downto 0 );             -- get ORX data from which ad9371 board? - for ORX mode
+variable no_anten           :   std_logic_vector( 2 downto 0 )  := "000";   -- in this ad9371, get ORX data from which antenna?
 
 --variable ant2calib          :   integer range 0 to 7 := 0;
 variable ant2orx            :   integer range 0 to 7 := 0;
-
---variable ad2calib           :   integer range 0 to 3 := 0; -- calibrate this antenna
+--variable ad2calib           :   integer range 0 to 3 := 0;                -- calibrate this antenna
 variable ad2orx             :   integer range 0 to 3 := 0;
 begin
 case pre_state is
@@ -180,10 +168,10 @@ case pre_state is
             
             if( s_axis_srx_ctrl_tvalid = '1' ) then
                 nx_state    <= newrequest;
-                no_ad9371       := s_axis_srx_ctrl_tdata( 2 ) & s_axis_srx_ctrl_tdata( 0 );
-                no_anten        := s_axis_srx_ctrl_tdata( 2 downto 0 );
-                ad2orx          := to_integer( unsigned(no_ad9371));
-                ant2orx         := to_integer( unsigned(no_anten));
+                no_ad9371   := s_axis_srx_ctrl_tdata( 2 ) & s_axis_srx_ctrl_tdata( 0 );
+                no_anten    := s_axis_srx_ctrl_tdata( 2 downto 0 );
+                ad2orx      := to_integer( unsigned(no_ad9371));
+                ant2orx     := to_integer( unsigned(no_anten));
             end if;
             
     when newrequest =>
@@ -463,3 +451,48 @@ ad9371_3_t: orx_trigger_generator
                 trigger_gen_ready(3));
 
 end Behavioral;
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+when wait_ack    =>       
+        if( orx_ack /= "000" ) then -- detect acknowledge signal from AD9371
+            rst_counter <= '1';
+            enb_cnt     <= '0';
+            
+            -- signal for the main core
+            srx_user_reg    <= mode_reg(0);
+            srx_valid_reg   <= '1';
+            
+            no_ack          <= '0';
+            
+            -- signal for m_axis_srx_ctrl_tready
+            din_ready_reg   <= '1';
+            nx_state        <= wait_for_800us;
+        
+        elsif( cnt >=  T_MODE_ACK_IN_CYCLES ) then   -- time out !!!
+            rst_counter <= '1';
+            enb_cnt     <= '0';
+            
+            -- signal for the main core
+            srx_user_reg    <= mode_reg(0);
+            srx_valid_reg   <= '1';
+            
+            no_ack          <= '1';
+            
+            -- signal for m_axis_srx_ctrl_tready
+            din_ready_reg   <= '1';
+            nx_state        <= wait_for_800us;
+        end if; 
+        
+    when wait_for_800us =>      -- wait for at least 800 us to accept a new request from DPD
+        din_ready_reg       <= '1';
+        if( ready2trigger = '1' ) then
+            nx_state        <= init;
+        end if;
+    
+    when set_all_2_arm_calib =>
+        orx_mode            <= ARM_CALIB;
+
+    when OTHERS =>  null;
