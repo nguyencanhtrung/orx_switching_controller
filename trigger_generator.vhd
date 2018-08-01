@@ -4,7 +4,7 @@
 -- 
 -- Create Date: 07/26/2018 03:11:22 PM
 -- Design Name: 
--- Module Name: orx_trigger_generator - Behavioral
+-- Module Name: trigger_generator - Behavioral
 -- Project Name: 
 -- Target Devices: 
 -- Tool Versions: 
@@ -28,7 +28,7 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 
-entity orx_trigger_generator is
+entity trigger_generator is
     Generic(    PERIOD_1US 	: natural := 304; -- 1 us = 304 cycle of clock 307.2 MHz
                 HIGH_US    	: natural := 5;   -- duty cycle = 50%
                 LOW_US     	: natural := 5);
@@ -37,9 +37,9 @@ entity orx_trigger_generator is
            enb          	: in STD_LOGIC;
            orx_trigger  	: out STD_LOGIC;
            ready2trigger	: out STD_LOGIC);
-end orx_trigger_generator;
+end trigger_generator;
 
-architecture Behavioral of orx_trigger_generator is
+architecture Behavioral of trigger_generator is
 -- State definition
 type state is (init, high, low);
 signal pre_state, nx_state  :   state;

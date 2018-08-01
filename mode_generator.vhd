@@ -4,7 +4,7 @@
 -- 
 -- Create Date: 05/28/2018 04:56:38 PM
 -- Design Name: 
--- Module Name: orx_mode_generator - Behavioral
+-- Module Name: mode_generator - Behavioral
 -- Project Name: 
 -- Target Devices: 
 -- Tool Versions: 
@@ -29,7 +29,7 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
-entity orx_mode_generator is
+entity mode_generator is
     Generic(
            PERIOD_1US       : natural := 304;   -- 1 us = 304 cycle of clock 307.2 MHz
            T_MODE_SETUP     : natural := 1;     -- min   -- unit: us
@@ -39,24 +39,19 @@ entity orx_mode_generator is
     Port ( rst_n            : in STD_LOGIC;
            clk              : in STD_LOGIC;
            
-           -- Interface 2 orx_trigger_generator
            ready2trigger    : in STD_LOGIC;
            enb_trigger      : out STD_LOGIC;
            
-           -- Interface 2 GPIO
-           orx_mode         : out STD_LOGIC_VECTOR (2 downto 0);
-           --orx_ack          : in STD_LOGIC_VECTOR (2 downto 0);
-           
-           -- Interface 2 DPD core (m_axis_srx_ctrl)
-           din_tready       : out STD_LOGIC;
-           din_tvalid       : in STD_LOGIC;
-           din_tdata        : in STD_LOGIC_VECTOR(1 downto 0); -- 00: ORX1, 01: ORX2, OTHERWISE: INTERNAL CALIB
-           
-           ready4newrequest : out STD_LOGIC
-           );
-end orx_mode_generator;
+           cmd_tvalid       : in STD_LOGIC;
+           cmd_tdata        : in STD_LOGIC_VECTOR(1 downto 0);          -- 00: ORX1, 01: ORX2, OTHERWISE: INTERNAL CALIB
+           cmd_tready       : out STD_LOGIC;                            -- IP ready for a new command
 
-architecture Behavioral of orx_mode_generator is
+           -- Interface 2 GPIO
+           orx_mode         : out STD_LOGIC_VECTOR (2 downto 0)
+           );
+end mode_generator;
+
+architecture Behavioral of mode_generator is
 -- Type definition
 type state is (init, setup_time, enable_trigger, hold_time );
 signal pre_state, nx_state      :   state;
@@ -105,10 +100,10 @@ end process state_logic;
 --******************************************************************************
 --                      Combinational Circuit                                 --
 --******************************************************************************
--- Note: Signals including din_tvalid, ready2trigger should be synchronous with
+-- Note: Signals including cmd_tvalid, ready2trigger should be synchronous with
 -- the same clock to avoid timing violation
 --------------------------------------------------------------------------------
-state_def:process( pre_state, din_tvalid, ready2trigger)
+state_def:process( pre_state, cmd_tvalid, ready2trigger)
 begin
 -------------------------------------------------------
 -- default values - prevent infering unintended latches
@@ -125,11 +120,11 @@ case pre_state is
     when init =>
         ready4newreq_reg    <= '1';
         
-        if( din_tvalid = '1' ) then                         -- sampling input data
+        if( cmd_tvalid = '1' ) then                         -- sampling input data
             nx_state        <= setup_time;
             output_enb      <= '1';
 
-            case din_tdata is
+            case cmd_tdata is
                 when "00"   =>
                     orx_mode_reg    <= ORX1;
                 when "01"   => 
@@ -169,10 +164,10 @@ end process state_def;
 output_free_glitches:process( clk )
 begin
     if rising_edge( clk ) then
-        ready4newrequest    <= ready4newreq_reg;
-        enb_trigger         <= enb_trigger_reg;
+        cmd_tready      <= ready4newreq_reg;
+        enb_trigger     <= enb_trigger_reg;
         if( output_enb = '1' ) then
-            orx_mode        <= orx_mode_reg;
+            orx_mode    <= orx_mode_reg;
         end if;
 
     end if;

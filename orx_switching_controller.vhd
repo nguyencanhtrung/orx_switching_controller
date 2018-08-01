@@ -75,7 +75,7 @@ component orx_mode_generator is
            -- Interface 2 DPD core (m_axis_srx_ctrl)
            din_tready       : out STD_LOGIC;
            din_tvalid       : in STD_LOGIC;
-           din_tdata        : in STD_LOGIC_VECTOR(1 downto 0); -- 00: ORX1, 01: ORX2, OTHERWISE: INTERNAL CALIB
+           din_tdata        : in STD_LOGIC_VECTOR(1 downto 0);              -- 00: ORX1, 01: ORX2, OTHERWISE: INTERNAL CALIB
            
            -- Interface 2 DPD core (s_axis_srx)
            dout_srx_tuser   : out STD_LOGIC;
@@ -89,10 +89,10 @@ end component orx_mode_generator;
 
 
 component orx_trigger_generator is
-    Generic(    PERIOD_1US : natural := 304;   -- 1 us = 304 cycle of clock 307.2 MHz
+    Generic(    PERIOD_1US : natural := 304;                                -- 1 us = 304 cycle of clock 307.2 MHz
                 HIGH_US    : natural := 400;
                 LOW_US     : natural := 400);
-    Port ( clk          : in STD_LOGIC;         -- clock 1 us
+    Port ( clk          : in STD_LOGIC;                                     -- clock 1 us
            rst_n        : in STD_LOGIC;
            enb          : in STD_LOGIC;
            orx_trigger  : out STD_LOGIC;
@@ -103,7 +103,7 @@ end component orx_trigger_generator;
 type state is (init, newrequest, wait4modegen, wait4ready, delay );
 signal pre_state, nx_state      :   state;
 attribute enum_encoding         :   string;
-attribute enum_encoding of state:   type is "one-hot";              -- "one-hot" or "sequential"
+attribute enum_encoding of state:   type is "one-hot";                      -- "one-hot" or "sequential"
 --=================================================================
 -- SIGNAL DECLARATION
 signal mode_reg                 :   std_logic_vector( 1 downto 0 );
@@ -111,13 +111,13 @@ signal mode_reg                 :   std_logic_vector( 1 downto 0 );
 -- MODE GENERATOR 
 signal mode_gen_err_no_ack_reg  :   std_logic_vector( 3 downto 0 );
 
-signal mode_gen_user_reg        :   std_logic_vector( 3 downto 0 ); -- each ad9371 signals 1 bit ( 0 - antenna 0; 1- antenna 1)
-signal mode_gen_valid_reg       :   std_logic_vector( 3 downto 0 ); -- each ad9371 signals 1 bit
+signal mode_gen_user_reg        :   std_logic_vector( 3 downto 0 );         -- each ad9371 signals 1 bit ( 0 - antenna 0; 1- antenna 1)
+signal mode_gen_valid_reg       :   std_logic_vector( 3 downto 0 );         -- each ad9371 signals 1 bit
 
 signal ready4newreq             :   std_logic_vector( 3 downto 0 );
 
 -- interface to srx_ctrl
-signal din_tdata_reg            :   std_logic_vector( 7 downto 0 ); -- for 4 ad9371 data
+signal din_tdata_reg            :   std_logic_vector( 7 downto 0 );         -- for 4 ad9371 data
 signal din_tvalid_reg           :   std_logic_vector( 3 downto 0 );
 signal din_tready_reg           :   std_logic_vector( 3 downto 0 );
 -------------------------------------------------------------------
@@ -127,13 +127,13 @@ signal trigger_gen_enb          :   std_logic_vector( 3 downto 0 );
 -------------------------------------------------------------------
 --=================================================================
 signal ant2calib                :   integer range 0 to 7 := 0;
-signal ad2calib                 :   integer range 0 to 3 := 0;      -- calibrate this antenna
+signal ad2calib                 :   integer range 0 to 3 := 0;              -- calibrate this antenna
 
-signal timer                    :   integer range 0 to 5;           -- can phai sua lai
+signal timer                    :   integer range 0 to 5;                   -- can phai sua lai
 begin           
 --========================= CONTROL ==============================                                               
 state_logic: process( clk )
-variable count  : integer range 0 to 5;                             -- can phai sua lai range
+variable count  : integer range 0 to 5;                                     -- can phai sua lai range
 begin
   if rising_edge(clk) then
     if( rst_n = '0' ) then
@@ -168,8 +168,11 @@ case pre_state is
             
             if( s_axis_srx_ctrl_tvalid = '1' ) then
                 nx_state    <= newrequest;
+                -- Quy dinh viec chon AD9371 va Antenna tren AD9371 do
                 no_ad9371   := s_axis_srx_ctrl_tdata( 2 ) & s_axis_srx_ctrl_tdata( 0 );
                 no_anten    := s_axis_srx_ctrl_tdata( 2 downto 0 );
+                --
+                --
                 ad2orx      := to_integer( unsigned(no_ad9371));
                 ant2orx     := to_integer( unsigned(no_anten));
             end if;
@@ -221,11 +224,6 @@ case pre_state is
                     din_tdata_reg(7 downto 6)   <= "01";
             when others => null;
             end case;
-            
-            --din_tdata_reg( ad2calib * 2 + 1 downto ad2calib * 2)    <= "11";            -- set ARM Calib
-            --din_tdata_reg( ad2orx * 2 + 1 downto ad2orx * 2)        <= '0' & no_anten;  -- set ORX mode
-            
-            
             
     when wait4modegen   =>
             nx_state                        <= newrequest;
