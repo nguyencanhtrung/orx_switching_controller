@@ -66,7 +66,6 @@ constant ARM_CALIB              :  std_logic_vector(2 downto 0) := "011";
 -- Timing
 constant T_MODE_SETUP_IN_CYCLES : integer := T_MODE_SETUP * PERIOD_1US;
 constant T_MODE_HOLD_IN_CYCLES  : integer := T_MODE_HOLD * PERIOD_1US;
-constant T_MODE_ACK_IN_CYCLES   : integer := T_MODE_ACK * PERIOD_1US;
 
 -- Register stores orx modes (00: ORX1, 01: ORX2, OTHERWISE: INTERNAL CALIB)
 signal orx_mode_reg             : std_logic_vector(2 downto 0);

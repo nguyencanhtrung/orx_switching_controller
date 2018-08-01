@@ -72,7 +72,7 @@ component mode_generator is
            orx_mode         : out STD_LOGIC_VECTOR (2 downto 0)
            );
 end component mode_generator;
---
+
 --
 component trigger_generator is
     Generic(    
@@ -98,6 +98,8 @@ attribute enum_encoding of state:   type is "one-hot";                      -- "
 --=================================================================
 -- SIGNAL DECLARATION
 -------------------------------------------------------------------
+constant T_MODE_ACK_IN_CYCLES   : integer := T_MODE_ACK * PERIOD_1US;
+constant T_800US 				: integer := 800 * PERIOD_1US;
 ----------------------
 -- MODE GENERATOR 
 ----------------------
@@ -113,21 +115,22 @@ signal cmd2modegen_tvalid_reg   :   std_logic                     ;
 --
 signal trigger_gen_ready        :   std_logic;
 signal trigger_gen_enb          :   std_logic;
-
 ----------------------
 -- TRIGGER GENERATOR
 ----------------------
-
+signal trigger_enable 			:	std_logic;
+signal trigger_enable_reg 		:	std_logic;
+--signal trigger_ready 			: 	std_logic;
 -------------------------------------------------------------------
 
-signal timer                    :   integer range 0 to 5;                   -- can phai sua lai
-
+signal timer                    :   integer range 0 to T_MODE_ACK_IN_CYCLES;                   -- can phai sua lai
+signal cmd_tready_reg 			:	std_logic;
 -------------------------------------------------------------------
 -- ================================================================
 -------------------------------------------------------------------
 begin       
 state_logic: process( clk )
-variable count  : integer range 0 to 5;                                     -- can phai sua lai range
+variable count  : integer range 0 to T_MODE_ACK_IN_CYCLES;                                     -- can phai sua lai range
 begin
   if rising_edge(clk) then
     if( rst_n = '0' ) then
@@ -142,92 +145,69 @@ begin
   end if;
 end process state_logic;
 
-comb_logic: process ( pre_state, cmd_tvalid, cmd2modegen_tready, trigger_gen_ready, trigger_gen_enb )
+comb_logic: process ( pre_state, cmd_tvalid, cmd2modegen_tready, trigger_gen_enb )
 variable cmd : std_logic_vector( 1 downto 0 );
 begin
 --------------------
 -- Default values
 --------------------
-timer         		<= 0;
+timer         			<= 0;
+cmd_tready_reg 			<= '0';
 
+cmd2modegen_tvalid_reg	<= '0';
+cmd2modegen_tdata_reg	<= cmd_tdata;
+wr2reg					<= '0';
+
+trigger_enable_reg 		<= '0';
 --
 case pre_state is  
   when init 	=>
   	nx_state 					<= init;
-
-  	if( cmd_tvalid = '1' ) then
-  		cmd  					:= cmd_tdata;	-- how to avoid infering latch here!
+  	
+  	cmd_tready_reg				<= '1';
+  	
+	-- What happens if cmd2modegen_tready = '0' for too long
+  	if( cmd_tvalid = '1' and cmd2modegen_tready = '1' ) then
+  		wr2reg					<= '1';
+  		cmd2modegen_tvalid_reg	<= '1';
+	    cmd2modegen_tdata_reg	<= cmd_tdata;
   		nx_state    			<= mode_gen;
   	end if;
 
   when mode_gen =>
 	nx_state                  	<= mode_gen;
-	  
-	if( cmd2modegen_tready = '1' ) then
-	    cmd2modegen_tvalid_reg	<= '1';
-	    cmd2modegen_tdata_reg	<= cmd;
+	-- de-assert valid when mode_generator has already read command.
+	if( cmd2modegen_tready = '0' ) then
+	    wr2reg					<= '1';
+  		cmd2modegen_tvalid_reg	<= '0';				
 	    nx_state                <= trigger_gen;
 	end if;
           
   when trigger_gen =>
-      nx_state               	<= trigger_gen;
-      
-      if( trigger_gen_ready = '1' and  trigger_gen_enb = '1' ) then
-
-      end if;
+    nx_state               	<= trigger_gen;
+    
+    -- No need to check trigger_gen_ready, it is checked inside module mode_generator
+    if( trigger_gen_enb = '1' ) then
+		trigger_enable_reg	<= '1';
+		nx_state			<= wait_ack;
+    end if;
           
   when wait_ack =>
-      nx_state                        <= wait4ready;
-      -- no need to check ARM CALIB antenna
-      if( din_tready_reg( ad2orx ) = '1' ) then
-          -- trigger ready signal to dpd informing orx data is ready
-          s_axis_srx_ctrl_tready      <= '1';
-          nx_state                    <= delay;
-          
-          rst_counter                 <= '0';
-          enb_cnt                     <= '1';
-          
-          -- store previous orxmode antenna to switch it back to ARM Calib later
-          ad2calib        <= ad2orx;
-          ant2calib       <= ant2orx;
-      end if;
-  when wait_ack    =>       
-    if( orx_ack /= "000" ) then -- detect acknowledge signal from AD9371
-        rst_counter <= '1';
-        enb_cnt     <= '0';
-        
-        -- signal for the main core
-        srx_user_reg    <= mode_reg(0);
-        srx_valid_reg   <= '1';
-        
-        no_ack          <= '0';
-        
-        -- signal for m_axis_srx_ctrl_tready
-        din_ready_reg   <= '1';
+      nx_state      <= no_ack;
+      
+      timer 		<=  T_MODE_ACK_IN_CYCLES;
+      if( orx_ack /= "000" ) then -- detect acknowledge signal from AD9371
+        timer	<= 0;
         nx_state        <= wait_for_800us;
-    
-    elsif( cnt >=  T_MODE_ACK_IN_CYCLES ) then   -- time out !!!
-        rst_counter <= '1';
-        enb_cnt     <= '0';
+	end if;
+      
+  when no_ack    =>   
         
-        -- signal for the main core
-        srx_user_reg    <= mode_reg(0);
-        srx_valid_reg   <= '1';
-        
-        no_ack          <= '1';
-        
-        -- signal for m_axis_srx_ctrl_tready
-        din_ready_reg   <= '1';
-        nx_state        <= wait_for_800us;
-    end if; 
-        
-	when wait_for_800us =>      -- wait for at least 800 us to accept a new request from DPD
-	    din_ready_reg       <= '1';
-	    if( ready2trigger = '1' ) then
-	        nx_state        <= init;
-	    end if;
-
-	when OTHERS =>  null;              
+  when wait_for_800us =>      -- wait for at least 800 us to accept a new request from DPD
+		nx_state 	<= init;
+		timer 		<= T_800US;
+		
+  when OTHERS =>  null;              
 end case;
 end process comb_logic;
 
@@ -235,8 +215,13 @@ end process comb_logic;
 output_reg: process( clk )
 begin
   if rising_edge (clk) then
+  	if( wr2reg = '1' ) then
      cmd2modegen_tdata    <= cmd2modegen_tdata_reg;
      cmd2modegen_tvalid   <= cmd2modegen_tvalid_reg;
+    end if;
+    
+    trigger_enable		  <= trigger_enable_reg;
+    cmd_tready 			  <= cmd_tready_reg;
   end if;
 end process;
 --========================= PORT MAP ==============================
@@ -270,7 +255,7 @@ trigger_gen_unit: trigger_generator
     port map ( 
                 clk           =>  clk,
                 rst_n         =>  rst_n,
-                enb           =>  trigger_gen_enb,
+                enb           =>  trigger_enable,
                 orx_trigger   =>  gpio_orx_trigger,
                 ready2trigger =>  trigger_gen_ready
             );
