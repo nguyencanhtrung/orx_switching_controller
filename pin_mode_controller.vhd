@@ -31,8 +31,7 @@ entity pin_mode_controller is
             T_MODE_HOLD      : natural := 2;
             T_MODE_ACK       : natural := 2;
             HIGH_US          : natural := 5;
-            LOW_US           : natural := 5;
-            ADJUSTED_DELAY   : natural := 0                                   -- unit clock cycle
+            LOW_US           : natural := 5
     );
     Port ( clk                      : in    STD_LOGIC;
            rst_n                    : in    STD_LOGIC;
@@ -118,19 +117,18 @@ signal trigger_gen_enb          :   std_logic;
 ----------------------
 -- TRIGGER GENERATOR
 ----------------------
-signal trigger_enable 			:	std_logic;
-signal trigger_enable_reg 		:	std_logic;
---signal trigger_ready 			: 	std_logic;
+signal trigger_enable           :	std_logic;
+signal trigger_enable_reg 		  :	std_logic;
 -------------------------------------------------------------------
 
-signal timer                    :   integer range 0 to T_MODE_ACK_IN_CYCLES;                   -- can phai sua lai
+signal timer                    :   integer range 0 to T_MODE_ACK_IN_CYCLES;
 signal cmd_tready_reg 			:	std_logic;
 -------------------------------------------------------------------
 -- ================================================================
 -------------------------------------------------------------------
 begin       
 state_logic: process( clk )
-variable count  : integer range 0 to T_MODE_ACK_IN_CYCLES;                                     -- can phai sua lai range
+variable count  : integer range 0 to T_MODE_ACK_IN_CYCLES;
 begin
   if rising_edge(clk) then
     if( rst_n = '0' ) then
@@ -176,8 +174,7 @@ case pre_state is
 
   when mode_gen =>
 	nx_state                  	<= mode_gen;
-	-- de-assert valid when mode_generator has already read command.
-	if( cmd2modegen_tready = '0' ) then
+	if( cmd2modegen_tready = '0' ) then											-- de-assert valid when mode_generator has already read command.
 	    wr2reg					<= '1';
   		cmd2modegen_tvalid_reg	<= '0';				
 	    nx_state                <= trigger_gen;
@@ -186,8 +183,7 @@ case pre_state is
   when trigger_gen =>
     nx_state               	<= trigger_gen;
     
-    -- No need to check trigger_gen_ready, it is checked inside module mode_generator
-    if( trigger_gen_enb = '1' ) then
+    if( trigger_gen_enb = '1' ) then											-- No need to check trigger_gen_ready, it is checked inside module mode_generator
 		trigger_enable_reg	<= '1';
 		nx_state			<= wait_ack;
     end if;
@@ -196,14 +192,14 @@ case pre_state is
       nx_state      <= no_ack;
       
       timer 		<=  T_MODE_ACK_IN_CYCLES;
-      if( orx_ack /= "000" ) then -- detect acknowledge signal from AD9371
+      if( orx_ack /= "000" ) then 												-- detect acknowledge signal from AD9371
         timer	<= 0;
         nx_state        <= wait_for_800us;
 	end if;
       
   when no_ack    =>   
         
-  when wait_for_800us =>      -- wait for at least 800 us to accept a new request from DPD
+  when wait_for_800us =>      													-- wait for at least 800 us to accept a new request from DPD
 		nx_state 	<= init;
 		timer 		<= T_800US;
 		
@@ -224,8 +220,9 @@ begin
     cmd_tready 			  <= cmd_tready_reg;
   end if;
 end process;
---========================= PORT MAP ==============================
--- AD9371 - 0
+--------------------------------------------------------------------------------
+--================================= PORT MAP ===================================
+--------------------------------------------------------------------------------
 mode_gen_unit: mode_generator 
     generic map (
                     PERIOD_1US,
@@ -259,4 +256,7 @@ trigger_gen_unit: trigger_generator
                 orx_trigger   =>  gpio_orx_trigger,
                 ready2trigger =>  trigger_gen_ready
             );
+--------------------------------------------------------------------------------
+--=============================== END PORT MAP =================================
+--------------------------------------------------------------------------------
 end Behavioral;
