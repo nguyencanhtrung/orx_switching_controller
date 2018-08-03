@@ -31,10 +31,10 @@ use IEEE.NUMERIC_STD.ALL;
 
 entity mode_generator is
     Generic(
-           PERIOD_1US       : natural := 304;   -- 1 us = 304 cycle of clock 307.2 MHz
-           T_MODE_SETUP     : natural := 1;     -- min   -- unit: us
-           T_MODE_HOLD      : natural := 2     -- min
-           --T_MODE_ACK       : natural := 2      -- max
+           PERIOD_1US       : natural := 304;   								-- 1 us = 304 cycle of clock 307.2 MHz
+           T_MODE_SETUP     : natural := 1;     								-- min   -- unit: us
+           T_MODE_HOLD      : natural := 2     									-- min
+           --T_MODE_ACK       : natural := 2      								-- max
     );
     Port ( rst_n            : in STD_LOGIC;
            clk              : in STD_LOGIC;
@@ -43,8 +43,8 @@ entity mode_generator is
            enb_trigger      : out STD_LOGIC;
            
            cmd_tvalid       : in STD_LOGIC;
-           cmd_tdata        : in STD_LOGIC_VECTOR(1 downto 0);          -- 00: ORX1, 01: ORX2, OTHERWISE: INTERNAL CALIB
-           cmd_tready       : out STD_LOGIC;                            -- IP ready for a new command
+           cmd_tdata        : in STD_LOGIC_VECTOR(1 downto 0);          		-- 00: ORX1, 01: ORX2, OTHERWISE: INTERNAL CALIB
+           cmd_tready       : out STD_LOGIC;                            		-- IP ready for a new command
 
            -- Interface 2 GPIO
            orx_mode         : out STD_LOGIC_VECTOR (2 downto 0)
@@ -119,7 +119,7 @@ case pre_state is
     when init =>
         ready4newreq_reg    <= '1';
         
-        if( cmd_tvalid = '1' ) then                         -- sampling input data
+        if( cmd_tvalid = '1' ) then                         					-- sampling input data
             nx_state        <= setup_time;
             output_enb      <= '1';
 
@@ -138,7 +138,7 @@ case pre_state is
     when setup_time =>
         nx_state    <= setup_time;
         timer       <= T_MODE_SETUP_IN_CYCLES;
-        if( ready2trigger = '1' ) then                      -- trigger ready to be run
+        if( ready2trigger = '1' ) then                      					-- trigger ready to be run
             nx_state    <= enable_trigger;
         end if;
         

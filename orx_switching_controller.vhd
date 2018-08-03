@@ -26,13 +26,13 @@ use IEEE.NUMERIC_STD.ALL;
 
 entity orx_switching_controller is
     Generic(
-            PERIOD_1US       : natural := 304;      -- 1 us = 304 cycle of clock 307.2 MHz
-            T_MODE_SETUP     : natural := 1;        -- unit: us
-            T_MODE_HOLD      : natural := 2;
-            T_MODE_ACK       : natural := 2;
-            HIGH_US          : natural := 5;
-            LOW_US           : natural := 5;
-            ADJUSTED_DELAY   : natural := 0         -- unit clock cycle
+            PERIOD_1US                : natural := 304;                       -- 1 us = 304 cycle of clock 307.2 MHz
+            T_MODE_SETUP              : natural := 1;                         -- unit: us
+            T_MODE_HOLD               : natural := 2;
+            T_MODE_ACK                : natural := 2;
+            HIGH_US                   : natural := 5;
+            LOW_US                    : natural := 5;
+            ADJUSTED_DELAY            : natural := 0                          -- unit clock cycle
     );
     Port ( clk                        : in    STD_LOGIC;
            rst_n                      : in    STD_LOGIC;
@@ -43,7 +43,7 @@ entity orx_switching_controller is
            s_axis_srx_ctrl_tready     : out   STD_LOGIC;
            
            -- INTERFACE to DPD s_axis_srx
-           m_axis_srx_tuser           : out  STD_LOGIC_VECTOR( 7 downto 0 );
+           m_axis_srx_tuser           : out   STD_LOGIC_VECTOR( 7 downto 0 );
            
            -- INTERFACE to 4 AD9371s
            gpio_orx_mode              : out   STD_LOGIC_VECTOR (11 downto 0);
@@ -56,25 +56,27 @@ architecture Behavioral of orx_switching_controller is
 -- COMPONENT definition
 component pin_mode_controller is
     Generic(
-            PERIOD_1US       : natural := 304;                                -- 1 us = 304 cycle of clock 307.2 MHz
-            T_MODE_SETUP     : natural := 1;                                  -- unit: us
-            T_MODE_HOLD      : natural := 2;
-            T_MODE_ACK       : natural := 2;
-            HIGH_US          : natural := 5;
-            LOW_US           : natural := 5;
-            ADJUSTED_DELAY   : natural := 0                                   -- unit clock cycle
+            PERIOD_1US                : natural := 304;                       -- 1 us = 304 cycle of clock 307.2 MHz
+            T_MODE_SETUP              : natural := 1;                         -- unit: us
+            T_MODE_HOLD               : natural := 2;
+            T_MODE_ACK                : natural := 2;
+            HIGH_US                   : natural := 5;
+            LOW_US                    : natural := 5;
+            ADJUSTED_DELAY            : natural := 0                          -- unit clock cycle
     );
-    Port ( clk                      : in    STD_LOGIC;
-           rst_n                    : in    STD_LOGIC;
+    Port ( clk                        : in    STD_LOGIC;
+           rst_n                      : in    STD_LOGIC;
            
-           cmd_tdata                : in    STD_LOGIC_VECTOR ( 1 downto 0 );  -- Command received from main controller
-           cmd_tready               : out   STD_LOGIC;                        -- Ready to receive a new command
-           cmd_tvalid               : in    STD_LOGIC;                        -- 
+           cmd_tdata                  : in    STD_LOGIC_VECTOR ( 1 downto 0 );-- Command received from main controller
+           cmd_tready                 : out   STD_LOGIC;                      -- Ready to receive a new command
+           cmd_tvalid                 : in    STD_LOGIC;                      -- 
            
+           done_setup                 : out   STD_LOGIC;                      -- Receive ACK from ARM on AD9371
+
            -- INTERFACE to ONE AD9371
-           gpio_orx_mode            : out   STD_LOGIC_VECTOR (2 downto 0);
-           gpio_orx_trigger         : out   STD_LOGIC;
-           gpio_orx_ack             : in    STD_LOGIC_VECTOR (2 downto 0)
+           gpio_orx_mode              : out   STD_LOGIC_VECTOR (2 downto 0);
+           gpio_orx_trigger           : out   STD_LOGIC;
+           gpio_orx_ack               : in    STD_LOGIC_VECTOR (2 downto 0)
     );
 end component pin_mode_controller;
 --=================================================================
@@ -85,11 +87,14 @@ attribute enum_encoding         :   string;
 attribute enum_encoding of state:   type is "one-hot";                      -- "one-hot" or "sequential"
 --=================================================================
 -- SIGNAL DECLARATION
--- Interface to pin_mode_controller
+-- Interface to pin_mode_controller for 4 AD9371s
+constant DELAY                  :   integer := ADJUSTED_DELAY * PERIOD_1US;
+
 signal cmd_tdata_reg            :   std_logic_vector( 7 downto 0 );         -- Registers to store command from DPD software
 signal cmd_tvalid_reg           :   std_logic_vector( 3 downto 0 );
 signal cmd_tready_reg           :   std_logic_vector( 3 downto 0 );
--------------------------------------------------------------------
+
+signal done_setup               :   std_logic_vector( 3 downto 0 );
 --=================================================================
 signal ant2calib                :   integer range 0 to 7 := 0;
 signal ad2calib                 :   integer range 0 to 3 := 0;              -- calibrate this antenna
@@ -100,6 +105,14 @@ signal orx_switcher_tready_reg  :   std_logic;                              -- i
                                                                             -- from DPD software
 signal ant2orx                  :   integer range 0 to 7 := 0;
 signal ad2orx                   :   integer range 0 to 3 := 0;
+
+signal no_ad9371                :   std_logic_vector( 1 downto 0 );
+signal no_anten                 :   std_logic_vector( 2 downto 0 );
+
+signal set_new_user             :   std_logic;
+
+signal keep_old_config          :   std_logic;
+
 begin
 --------------------------------------------------------------------------------        
 --============================= CONTROL PATH =================================== 
@@ -120,7 +133,7 @@ begin
   end if;
 end process state_logic;
 
-comb_logic: process ( pre_state, s_axis_srx_ctrl_tvalid, cmd_tready_reg )
+comb_logic: process ( pre_state, s_axis_srx_ctrl_tvalid, cmd_tready_reg, orx_active )
 variable no_ad9371          :   std_logic_vector( 1 downto 0 );             -- get ORX data from which ad9371 board? - for ORX mode
 variable no_anten           :   std_logic_vector( 2 downto 0 )  := "000";   -- in this ad9371, get ORX data from which antenna?
 
@@ -136,6 +149,9 @@ update_new_assignment             <= '0';
 inform_dpd_cmd_receive            <= '0';
 
 send_command                      <= '0';
+set_new_user                      <= '0';
+
+keep_old_config                   <= '0';
 
 case pre_state is
     when arm_calib_state =>
@@ -167,29 +183,26 @@ case pre_state is
     when enable_send_command   =>
       nx_state                    <= enable_send_command;                   -- Check availability of antenna that need to switch to ORX mode (ONLY)
                                                                             -- NOTE: CAN PHAI CHECK LAI FLOW CUA HE THONG, LIEU CO CAN PHAI CHO READY4NEWREQ ko hay la lap tuc yeu cau ngay he thong switch
-      if( cmd_tready_reg( ad2orx ) = '1' and 
+      if( cmd_tready_reg( ad2orx   ) = '1' and 
           cmd_tready_reg( ad2calib ) = '1' ) then                           -- synchronize
           nx_state                <= wait4done;
           send_command            <= '1';
       end if;
 
+    when wait4ack =>                                                        -- WAIT UNTIL RECEIVED ACK signal from an AD9371 informing that ORX 
+      nx_state                    <= wait4ack;                              -- is switched successfully. Then, the controller need to tell DPD
+      if( done_setup( ad2orx ) = '1' ) then                                 -- software that it will receive ORX data from WHICH antenna and
+        nx_state                  <= wait4done;                             -- WHEN that data is valid via s_srx_tuser.
+        set_new_user              <= '1'; 
+      end if;                                                               -- QUESTTION: DO WE NEED TO CHECK HOW INTERNAL CALIB SETUP ?
+                                                                            --       I haven't checked it here!
+      --done_setup( ad2calib )  = '1'                                       
+
     when wait4done =>
-      nx_state                    <= wait4done;
-      
-      if( cmd_tready_reg( ad2orx ) = '1' ) then                             -- no need to check ARM CALIB antenna
-          s_axis_srx_ctrl_tready  <= '1';                                   -- trigger ready signal to dpd informing orx data is ready
-          nx_state                <= delay;
+      if( cmd_tready_reg( ad2orx   ) = '1' and 
+          cmd_tready_reg( ad2calib ) = '1' ) then
           
-          ad2calib                <= ad2orx;                                -- store previous orxmode antenna to switch it back to ARM Calib later
-          ant2calib               <= ant2orx;
-      end if;
-            
-    when delay  =>
-      s_axis_srx_ctrl_tready      <= '0';
-      nx_state                    <= delay;
-      if( cnt >= ADJUSTED_DELAY) then
-          m_axis_srx_tuser        <= "00000" & no_anten;
-          nx_state                <= init;
+          keep_old_config         <= '1';                                   -- store previous orxmode antenna to switch it back to ARM Calib later
       end if;
                     
     when OTHERS =>
@@ -197,64 +210,116 @@ end case;
 end process comb_logic;
 --------------------------------------------------------------------------------
 --============================== DATA PATH =====================================
---------------------------------------------------------------------------------                                               
+-------------------------------------------------------------------------------- 
+-------------------------------------------------------
+--  HANDLING S_AXIS_SRX_CTRL_TREADY
+-------------------------------------------------------
+s_axis_srx_ctrl_tready  <= inform_dpd_cmd_receive;                            -- tready informing ORX switcher has already received 
+                                                                              -- command from DPD hardware
+
+-------------------------------------------------------
+--  HANDLING M_AXIS_SRX_TUSER
+-------------------------------------------------------
+control_srx_tuser:process( clk )
+variable  new_antenna : std_logic_vector( 2 downto 0 );
+variable  count       : integer range 0 to DELAY      ;
+begin
+    if(rst_n = '0') then
+      count       := 0                ;
+      new_antenna := (OTHERS => '0')  ;
+    end if;
+
+    if( set_new_user = '1' ) then                                             -- Update new user when receiving ack from AD9371
+      new_antenna := no_anten         ;     
+    end if;
+
+    if( count >= DELAY ) then                                                 -- Using this parameter to align s_axis_srx_tuser
+      count             := 0          ;                                       -- and s_axis_srx_tdata
+      m_axis_srx_tuser  <= "00000" & new_antenna;
+    else
+      count             := count + 1  ;
+    end if;
+end process control_srx_tuser;
+
+keep_prev_config: process( clk )
+          ad2calib                <= ad2orx;                                
+          ant2calib               <= ant2orx;
+
+-------------------------------------------------------
+--  HANDLING DATA PATH WITH PIN_MODE_CONTROLLER
+-------------------------------------------------------
+control_cmd_tvalid:process( send_command, set_all_to_internal_calib)
+begin
+    cmd_tvalid_reg  <= (OTHERS => '0');
+----------------------------------
+-- 03. Enable to send new command
+----------------------------------
+  if( set_all_to_internal_calib = '1' ) then
+    cmd_tvalid_reg  <= (OTHERS => '1');
+  elsif( send_command = '1' ) then
+    cmd_tvalid_reg( ad2orx )    <= '1';
+    cmd_tvalid_reg( ad2calib )  <= '1';
+  end if;
+end process control_cmd_tvalid;
+
+--                                               
 output_reg: process( clk )
-variable no_ad9371  : std_logic_vector( 1 downto 0 );
-variable no_anten   : std_logic_vector( 2 downto 0 );
+variable v_no_ad9371  : std_logic_vector( 1 downto 0 );
+variable v_no_anten   : std_logic_vector( 2 downto 0 );
 begin
   if rising_edge( clk ) then
-      --------------------------------------------------------------------------
+      ----------------------------------
       -- 01. parse input ONLY WHEN 
-      --------------------------------------------------------------------------
+      ----------------------------------
       if( read_cmd_from_dpd = '1' ) then
-          no_ad9371   := s_axis_srx_ctrl_tdata( 2 ) & s_axis_srx_ctrl_tdata( 0 );
-          no_anten    := s_axis_srx_ctrl_tdata( 2 downto 0 );
-          ad2orx      <= to_integer( unsigned(no_ad9371));
-          ant2orx     <= to_integer( unsigned(no_anten) );
+          no_ad9371   <= s_axis_srx_ctrl_tdata( 2 ) & s_axis_srx_ctrl_tdata( 0 );
+          no_anten    <= s_axis_srx_ctrl_tdata( 2 downto 0 );
+
+          v_no_ad9371 := s_axis_srx_ctrl_tdata( 2 ) & s_axis_srx_ctrl_tdata( 0 );
+          v_no_anten  := s_axis_srx_ctrl_tdata( 2 downto 0 );
+
+          ad2orx      <= to_integer( unsigned(v_no_ad9371));
+          ant2orx     <= to_integer( unsigned(v_no_anten) );
       end if;
-      --------------------------------------------------------------------------
+      ----------------------------------
       -- 02. Assign new command
-      --------------------------------------------------------------------------
+      ----------------------------------
       -- Default values
       cmd_tdata_reg   <= (OTHERS => '1');
-      cmd_tvalid_reg  <= (OTHERS => '0');
       
       if( set_all_to_internal_calib = '1' ) then
           cmd_tdata_reg   <= (OTHERS => '1');
-          cmd_tvalid_reg  <= (OTHERS => '1');
-      elsif( update_new_assignment = '1' ) then
-          -- SET arm calib first, since if there is a chance one antenna is chosen 
-          -- as ARM calib and ORX mode simutaneously, 
-          -- ORX should have higher priority.
-          cmd_tdata_reg   <= (OTHERS => '1');
 
-          case ant2calib is
+      elsif( update_new_assignment = '1' ) then
+          case ant2calib is                                                   -- SET arm calib first, since if there is a chance one antenna is chosen 
+                                                                              -- as ARM calib and ORX mode simutaneously, 
+                                                                              -- ORX should have higher priority.
             when 0  =>
-                    cmd_tdata_reg(1 downto 0)   <= "11";    -- AD9371_1: Calib antenna 0
+                    cmd_tdata_reg(1 downto 0)   <= "11";                      -- AD9371_1: Calib antenna 0
             when 1  =>
-                    cmd_tdata_reg(3 downto 2)   <= "11";    -- AD9371_2: Calib antenna 0
-            when 2 =>
-                    cmd_tdata_reg(1 downto 0)   <= "11";    -- AD9371_1: Calib antenna 1
-            when 3 =>
+                    cmd_tdata_reg(3 downto 2)   <= "11";                      -- AD9371_2: Calib antenna 0
+            when 2  =>
+                    cmd_tdata_reg(1 downto 0)   <= "11";                      -- AD9371_1: Calib antenna 1
+            when 3  =>
                     cmd_tdata_reg(3 downto 2)   <= "11";    
             when 4  =>
                     cmd_tdata_reg(5 downto 4)   <= "11";
             when 5  =>
                     cmd_tdata_reg(7 downto 6)   <= "11";
-            when 6 =>
+            when 6  =>
                     cmd_tdata_reg(5 downto 4)   <= "11";
-            when 7 =>
+            when 7  =>
                     cmd_tdata_reg(7 downto 6)   <= "11";
             when others => null;
           end case;
           
           case no_anten is
             when "000" =>
-                    cmd_tdata_reg(1 downto 0)   <= "00";    -- AD9371_1: ORX antenna 0
+                    cmd_tdata_reg(1 downto 0)   <= "00";                      -- AD9371_1: ORX antenna 0
             when "001" =>
-                    cmd_tdata_reg(3 downto 2)   <= "00";    -- AD9371_2: ORX antenna 0
+                    cmd_tdata_reg(3 downto 2)   <= "00";                      -- AD9371_2: ORX antenna 0
             when "010" =>
-                    cmd_tdata_reg(1 downto 0)   <= "01";    -- AD9371_1: ORX antenna 1
+                    cmd_tdata_reg(1 downto 0)   <= "01";                      -- AD9371_1: ORX antenna 1
             when "011" =>
                     cmd_tdata_reg(3 downto 2)   <= "01";    
             when "100" =>
@@ -267,26 +332,17 @@ begin
                     cmd_tdata_reg(7 downto 6)   <= "01";
             when others => null;
           end case;
-      end if;
-
-      --------------------------------------------------------------------------
-      -- 03. Enable to send new command
-      --------------------------------------------------------------------------
-      if( send_command = '1' ) then
-          cmd_tvalid_reg  <= '1';
-          cmd_tvalid_reg  <= '1';
-      end if;
-      -- 
-      if( inform_dpd_cmd_receive = '1' ) then 
-          s_axis_srx_ctrl_tready  <= '1';
-      else
-          s_axis_srx_ctrl_tready  <= '0';
-      end if;
-
-      
+      end if;     
   end if;
 end process;
+
+
+
+
+
+-------------------------------------------------------------------
 --========================= PORT MAP ==============================
+-------------------------------------------------------------------
 -- AD9371 - 1
 ad1: pin_mode_controller
     generic map (
@@ -306,6 +362,7 @@ ad1: pin_mode_controller
            cmd_tready           => cmd_tready_reg(0)          ,      
            cmd_tvalid           => cmd_tvalid_reg(0)          ,                  
            
+           done_setup           => done_setup(0)              ,
           
            gpio_orx_mode        => gpio_orx_mode(2 downto 0)  ,
            gpio_orx_trigger     => gpio_orx_trigger(0),
@@ -329,8 +386,9 @@ ad2: pin_mode_controller
            
            cmd_tdata            => cmd_tdata_reg (3 downto 2) ,         
            cmd_tready           => cmd_tready_reg (1)         ,      
-           cmd_tvalid           => cmd_tvalid_reg (1)         ,                  
-           
+           cmd_tvalid           => cmd_tvalid_reg (1)         ,  
+
+           done_setup           => done_setup(1)              ,
           
            gpio_orx_mode        => gpio_orx_mode (5 downto 3) ,
            gpio_orx_trigger     => gpio_orx_trigger (1),
@@ -356,7 +414,8 @@ ad3: pin_mode_controller
            cmd_tready           => cmd_tready_reg (2)         ,      
            cmd_tvalid           => cmd_tvalid_reg (2)         ,                  
            
-          
+           done_setup           => done_setup(2)              ,
+
            gpio_orx_mode        => gpio_orx_mode (8 downto 6) ,
            gpio_orx_trigger     => gpio_orx_trigger (2)       ,
            gpio_orx_ack         => gpio_orx_ack (8 downto 6)  
@@ -381,7 +440,8 @@ ad4: pin_mode_controller
            cmd_tready           => cmd_tready_reg (3)         ,      
            cmd_tvalid           => cmd_tvalid_reg (3)         ,                  
            
-          
+           done_setup           => done_setup(3)              ,
+
            gpio_orx_mode        => gpio_orx_mode (11 downto 9),
            gpio_orx_trigger     => gpio_orx_trigger (3)       ,
            gpio_orx_ack         => gpio_orx_ack(11 downto 9)  
