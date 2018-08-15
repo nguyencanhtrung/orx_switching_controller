@@ -34,7 +34,6 @@ entity mode_generator is
            PERIOD_1US       : natural := 304;   								-- 1 us = 304 cycle of clock 307.2 MHz
            T_MODE_SETUP     : natural := 1;     								-- min   -- unit: us
            T_MODE_HOLD      : natural := 2     									-- min
-           --T_MODE_ACK       : natural := 2      								-- max
     );
     Port ( rst_n            : in STD_LOGIC;
            clk              : in STD_LOGIC;

@@ -78,7 +78,7 @@ begin
 case pre_state is 
     when init   =>
     				-- enb = '1' for at least 1 clk cycle
-    				-- in order for this FSM to capture the new state
+    				-- in order for this FSM captures the new state
     				-- if not, FSM cannot move to the next state.
     				-- hence, enb as an output of previous block should be store in
     				-- a flipflop running with the same clk as this FSM

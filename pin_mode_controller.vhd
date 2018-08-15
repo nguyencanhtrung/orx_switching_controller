@@ -18,7 +18,7 @@
 --          30/05/2018: detect race condition between ready4newreq and din_tvalid_reg
 --                      solved by: delete ready4newreq out of sensitivity list
 ----------------------------------------------------------------------------------
-
+----------------------------------------------------------------------------------
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -48,7 +48,8 @@ entity pin_mode_controller is
            gpio_orx_ack             : in    STD_LOGIC_VECTOR (2 downto 0)     -- bit0: SRX_ACK - ARM CALIB; bit1: ORX2_ACK; bit2: ORX1_ACK
     );
 end pin_mode_controller;
-
+----------------------------------------------------------------------------------
+----------------------------------------------------------------------------------
 architecture Behavioral of pin_mode_controller is
 --=================================================================
 -- COMPONENT DEFINITION
@@ -73,7 +74,7 @@ component mode_generator is
            orx_mode         : out STD_LOGIC_VECTOR (2 downto 0)
            );
 end component mode_generator;
-
+-------------------------------------------------------------------
 --
 component trigger_generator is
     Generic(    
@@ -89,6 +90,7 @@ component trigger_generator is
             ready2trigger   : out STD_LOGIC
           );
 end component trigger_generator;
+
 --=================================================================
 -- STATE definition
 -------------------------------------------------------------------
@@ -129,59 +131,69 @@ signal received_ack             : std_logic;
 signal orx_ack                  : std_logic_vector( 2 downto 0 );
 -------------------------------------------------------------------
 -- ================================================================
--------------------------------------------------------------------
+--------------------------------------
 begin   
-gating_ack:process( clk )
+gating_ack:process( clk )													-- Gating gpio_orx_ack to avoid any timing violation later
 begin
-  orx_ack <= gpio_orx_ack;
+  orx_ack 					<= gpio_orx_ack;
 end process gating_ack;
 
+-------------------------------------------------------------------
+--                      FSM - Control Path             			 --
+-------------------------------------------------------------------
 state_logic: process( clk )
 variable count  : integer range 0 to T_MODE_ACK_IN_CYCLES;
 begin
   if rising_edge(clk) then
     if( rst_n = '0' ) then
-      pre_state   <= mode_gen;
-      count       := 0;
+      pre_state   			<= mode_gen;
+      count       			:= 0;
     elsif ( count >= timer ) then
-      pre_state   <= nx_state;
-      count       := 0;
+      pre_state   			<= nx_state;
+      count       			:= 0;
     else
-      count := count + 1;
+      count 				:= count + 1;
     end if;
   end if;
 end process state_logic;
 
-comb_logic: process ( pre_state, cmd_tvalid, cmd2modegen_tready, trigger_gen_enb, orx_ack )
+--------------------------------------
+comb_logic: process ( 	pre_state, cmd_tvalid, cmd2modegen_tready, 
+						trigger_gen_enb, orx_ack )
 variable cmd : std_logic_vector( 1 downto 0 );
 begin
 --------------------
 -- Default values
 --------------------
-timer         			<= 0;
-cmd_tready_reg 			<= '0';
+timer         				<= 0;
+cmd_tready_reg 				<= '0';
 
-cmd2modegen_tvalid_reg	<= '0';
-cmd2modegen_tdata_reg	<= cmd_tdata;
-wr2reg					<= '0';
+cmd2modegen_tvalid_reg		<= '0';
+cmd2modegen_tdata_reg		<= cmd_tdata;
+wr2reg						<= '0';
 
-trigger_enable_reg 		<= '0';
-received_ack          <= '0';
+trigger_enable_reg 			<= '0';
+received_ack          		<= '0';
 
 --
 case pre_state is  
   when init 	=>
-  	nx_state 					<= init;
+  	nx_state 				<= init;
   	
-  	cmd_tready_reg				   <= '1';
+  	cmd_tready_reg			<= '1';
   	
-	-- What happens if cmd2modegen_tready = '0' for too long
-  	if( cmd_tvalid = '1' and cmd2modegen_tready = '1' ) then
-  		wr2reg					       <= '1';
+  	if( cmd_tvalid = '1' and  ) then                 -- What happens if cmd2modegen_tready = '0' for too long.
+                                                                             -- It's better to move it to the next state
+  		wr2reg				<= '1';
   		cmd2modegen_tvalid_reg <= '1';
-	    cmd2modegen_tdata_reg	 <= cmd_tdata;
-  		nx_state    			     <= mode_gen;
+	    cmd2modegen_tdata_reg	<= cmd_tdata;
+  		nx_state    			<= mode_gen;
   	end if;
+
+  when send_cmd_to_modegen =>
+    if( cmd2modegen_tready = '1' ) then
+
+    end if;
 
   when mode_gen =>
 	nx_state                   <= mode_gen;
@@ -226,6 +238,8 @@ output_reg: process( clk )
 begin
   if rising_edge (clk) then
   	if( wr2reg = '1' ) then
+      cmd2modegen_tdata_reg   <= cmd_tdata;
+
       cmd2modegen_tdata    <= cmd2modegen_tdata_reg;
       cmd2modegen_tvalid   <= cmd2modegen_tvalid_reg;
 

@@ -61,47 +61,52 @@ component pin_mode_controller is
             T_MODE_HOLD               : natural := 2;
             T_MODE_ACK                : natural := 2;
             HIGH_US                   : natural := 5;
-            LOW_US                    : natural := 5;
-            ADJUSTED_DELAY            : natural := 0                          -- unit clock cycle
+            LOW_US                    : natural := 5
     );
     Port ( clk                        : in    STD_LOGIC;
            rst_n                      : in    STD_LOGIC;
            
            cmd_tdata                  : in    STD_LOGIC_VECTOR ( 1 downto 0 );-- Command received from main controller
            cmd_tready                 : out   STD_LOGIC;                      -- Ready to receive a new command
-           cmd_tvalid                 : in    STD_LOGIC;                      -- 
+           cmd_tvalid                 : in    STD_LOGIC;                      
            
-           done_setup                 : out   STD_LOGIC;                      -- Receive ACK from ARM on AD9371
-
+           done_setup                 : out   STD_LOGIC;                      -- Done setup as soon as receiving ACK 
+                                                                              -- from ARM on AD9371
            -- INTERFACE to ONE AD9371
-           gpio_orx_mode              : out   STD_LOGIC_VECTOR (2 downto 0);
+           gpio_orx_mode              : out   STD_LOGIC_VECTOR ( 2 downto 0 );
            gpio_orx_trigger           : out   STD_LOGIC;
-           gpio_orx_ack               : in    STD_LOGIC_VECTOR (2 downto 0)
+           gpio_orx_ack               : in    STD_LOGIC_VECTOR ( 2 downto 0 )
     );
 end component pin_mode_controller;
 --=================================================================
 -- STATE definition
-type state is (arm_calib_state, init, assign_new_cmd, enable_send_command, wait4done, delay );
+type state is (arm_calib_state, init, assign_new_cmd, enable_send_command, wait4ack, wait4done );
 signal pre_state, nx_state      :   state;
 attribute enum_encoding         :   string;
 attribute enum_encoding of state:   type is "one-hot";                      -- "one-hot" or "sequential"
 --=================================================================
 -- SIGNAL DECLARATION
--- Interface to pin_mode_controller for 4 AD9371s
 constant DELAY                  :   integer := ADJUSTED_DELAY * PERIOD_1US;
-
+--
+-- Interface to pin_mode_controller for 4 AD9371s
 signal cmd_tdata_reg            :   std_logic_vector( 7 downto 0 );         -- Registers to store command from DPD software
 signal cmd_tvalid_reg           :   std_logic_vector( 3 downto 0 );
 signal cmd_tready_reg           :   std_logic_vector( 3 downto 0 );
 
 signal done_setup               :   std_logic_vector( 3 downto 0 );
 --=================================================================
-signal ant2calib                :   integer range 0 to 7 := 0;
-signal ad2calib                 :   integer range 0 to 3 := 0;              -- calibrate this antenna
-
-signal timer                    :   integer range 0 to 5;                   -- can phai sua lai
+-- Control signals
 signal set_all_to_internal_calib:   std_logic_vector(3 downto 0)  ;
 signal orx_switcher_tready_reg  :   std_logic;                              -- informing ORX SWITCHER has already received command
+
+signal send_command             :   std_logic;
+signal set_new_user             :   std_logic;
+
+signal inform_dpd_cmd_receive   :   std_logic;                              -- inform dpd cmd receive by asserting m_srx_control_tready = '1'
+signal keep_old_config          :   std_logic;
+
+-- Parameters
+signal timer                    :   integer range 0 to DELAY;               -- can phai sua lai
                                                                             -- from DPD software
 signal ant2orx                  :   integer range 0 to 7 := 0;
 signal ad2orx                   :   integer range 0 to 3 := 0;
@@ -109,16 +114,15 @@ signal ad2orx                   :   integer range 0 to 3 := 0;
 signal no_ad9371                :   std_logic_vector( 1 downto 0 );
 signal no_anten                 :   std_logic_vector( 2 downto 0 );
 
-signal set_new_user             :   std_logic;
-
-signal keep_old_config          :   std_logic;
+signal ant2calib                :   integer range 0 to 7 := 0;
+signal ad2calib                 :   integer range 0 to 3 := 0;              -- calibrate this antenna
 
 begin
 --------------------------------------------------------------------------------        
 --============================= CONTROL PATH =================================== 
 --------------------------------------------------------------------------------                                             
 state_logic: process( clk )
-variable count  : integer range 0 to 5;                                     -- can phai sua lai range
+variable count  : integer range 0 to DELAY;                                 -- can phai sua lai range
 begin
   if rising_edge(clk) then
     if( rst_n = '0' ) then
@@ -132,15 +136,14 @@ begin
     end if;
   end if;
 end process state_logic;
-
+---------------------------------
+---------------------------------
 comb_logic: process ( pre_state, s_axis_srx_ctrl_tvalid, cmd_tready_reg, orx_active )
 variable no_ad9371          :   std_logic_vector( 1 downto 0 );             -- get ORX data from which ad9371 board? - for ORX mode
 variable no_anten           :   std_logic_vector( 2 downto 0 )  := "000";   -- in this ad9371, get ORX data from which antenna?
 
 begin
 -- default values to avoid inferring latches
-cmd_temp_tvalid_reg               <= (OTHERS => '0');
-cmd_temp_tdata_reg                <= (OTHERS => '1');
 set_all_to_internal_calib         <= '0';
 orx_switcher_tready_reg           <= '0';
 
@@ -182,11 +185,11 @@ case pre_state is
 
     when enable_send_command   =>
       nx_state                    <= enable_send_command;                   -- Check availability of antenna that need to switch to ORX mode (ONLY)
-                                                                            -- NOTE: CAN PHAI CHECK LAI FLOW CUA HE THONG, LIEU CO CAN PHAI CHO READY4NEWREQ ko hay la lap tuc yeu cau ngay he thong switch
-      if( cmd_tready_reg( ad2orx   ) = '1' and 
+                                                                            -- NOTE: CAN PHAI CHECK LAI FLOW CUA HE THONG, LIEU CO CAN 
+      if( cmd_tready_reg( ad2orx   ) = '1' and                              -- PHAI CHO READY4NEWREQ ko hay la lap tuc yeu cau ngay he thong switch
           cmd_tready_reg( ad2calib ) = '1' ) then                           -- synchronize
           nx_state                <= wait4done;
-          send_command            <= '1';
+          send_command            <= '1';                                    
       end if;
 
     when wait4ack =>                                                        -- WAIT UNTIL RECEIVED ACK signal from an AD9371 informing that ORX 
@@ -251,15 +254,15 @@ keep_prev_config: process( clk )
 control_cmd_tvalid:process( send_command, set_all_to_internal_calib)
 begin
     cmd_tvalid_reg  <= (OTHERS => '0');
-----------------------------------
--- 03. Enable to send new command
-----------------------------------
-  if( set_all_to_internal_calib = '1' ) then
-    cmd_tvalid_reg  <= (OTHERS => '1');
-  elsif( send_command = '1' ) then
-    cmd_tvalid_reg( ad2orx )    <= '1';
-    cmd_tvalid_reg( ad2calib )  <= '1';
-  end if;
+    ----------------------------------
+    -- 00. Enable to send new command
+    ----------------------------------
+    if( set_all_to_internal_calib = '1' ) then
+      cmd_tvalid_reg  <= (OTHERS => '1');
+    elsif( send_command = '1' ) then
+      cmd_tvalid_reg( ad2orx )    <= '1';
+      cmd_tvalid_reg( ad2calib )  <= '1';
+    end if;
 end process control_cmd_tvalid;
 
 --                                               
