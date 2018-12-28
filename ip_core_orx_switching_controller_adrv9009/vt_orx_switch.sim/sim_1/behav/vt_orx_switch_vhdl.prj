@@ -1,0 +1,5 @@
+# compile vhdl design source files
+vhdl xil_defaultlib  "../../../vt_orx_switch.srcs/sources_1/new/vt_orx_switch.vhd"
+
+# Do not sort compile order
+nosort

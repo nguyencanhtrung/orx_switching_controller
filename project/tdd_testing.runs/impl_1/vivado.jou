@@ -1,0 +1,12 @@
+#-----------------------------------------------------------
+# Vivado v2017.2.1 (64-bit)
+# SW Build 1957588 on Wed Aug  9 16:32:10 MDT 2017
+# IP Build 1948039 on Wed Aug  9 18:19:28 MDT 2017
+# Start of session at: Fri Nov 30 18:23:58 2018
+# Process ID: 11293
+# Current directory: /home/trungnguyen/01.IMPL/07.TDD_TEST/tdd_testing.runs/impl_1
+# Command line: vivado -log orx_test_bd_wrapper.vdi -applog -product Vivado -messageDb vivado.pb -mode batch -source orx_test_bd_wrapper.tcl -notrace
+# Log file: /home/trungnguyen/01.IMPL/07.TDD_TEST/tdd_testing.runs/impl_1/orx_test_bd_wrapper.vdi
+# Journal file: /home/trungnguyen/01.IMPL/07.TDD_TEST/tdd_testing.runs/impl_1/vivado.jou
+#-----------------------------------------------------------
+source orx_test_bd_wrapper.tcl -notrace

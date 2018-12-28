@@ -1,0 +1,12 @@
+#-----------------------------------------------------------
+# Webtalk v2017.2.1 (64-bit)
+# SW Build 1957588 on Wed Aug  9 16:32:10 MDT 2017
+# IP Build 1948039 on Wed Aug  9 18:19:28 MDT 2017
+# Start of session at: Thu Dec 27 17:53:36 2018
+# Process ID: 30359
+# Current directory: /home/trungnguyen/01.IMPL/07.TDD_TEST/tdd_testing.sim/sim_1/synth/func
+# Command line: wbtcv -mode batch -source /home/trungnguyen/01.IMPL/07.TDD_TEST/tdd_testing.sim/sim_1/synth/func/xsim.dir/tb_orx_test_bd_wrapper_func_synth/webtalk/xsim_webtalk.tcl -notrace
+# Log file: /home/trungnguyen/01.IMPL/07.TDD_TEST/tdd_testing.sim/sim_1/synth/func/webtalk.log
+# Journal file: /home/trungnguyen/01.IMPL/07.TDD_TEST/tdd_testing.sim/sim_1/synth/func/webtalk.jou
+#-----------------------------------------------------------
+source /home/trungnguyen/01.IMPL/07.TDD_TEST/tdd_testing.sim/sim_1/synth/func/xsim.dir/tb_orx_test_bd_wrapper_func_synth/webtalk/xsim_webtalk.tcl -notrace

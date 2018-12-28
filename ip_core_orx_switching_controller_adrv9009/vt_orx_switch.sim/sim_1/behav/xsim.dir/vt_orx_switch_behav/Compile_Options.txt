@@ -1,0 +1,1 @@
+-wto "1c7882d50ea546f5ae6d78581add4fd1" --debug "typical" --relax --mt "8" -L "xil_defaultlib" -L "secureip" --snapshot "vt_orx_switch_behav" "xil_defaultlib.vt_orx_switch" -log "elaborate.log" 

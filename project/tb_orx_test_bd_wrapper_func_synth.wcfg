@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wave_config>
+   <wave_state>
+   </wave_state>
+   <db_ref_list>
+      <db_ref path="tb_orx_test_bd_wrapper_func_synth.wdb" id="1">
+         <top_modules>
+            <top_module name="tb_orx_test_bd_wrapper" />
+         </top_modules>
+      </db_ref>
+   </db_ref_list>
+   <zoom_setting>
+      <ZoomStartTime time="1534795100000fs"></ZoomStartTime>
+      <ZoomEndTime time="1986795100001fs"></ZoomEndTime>
+      <Cursor1Time time="1615795100000fs"></Cursor1Time>
+   </zoom_setting>
+   <column_width_setting>
+      <NameColumnWidth column_width="174"></NameColumnWidth>
+      <ValueColumnWidth column_width="66"></ValueColumnWidth>
+   </column_width_setting>
+   <WVObjectSize size="18" />
+   <wvobject type="logic" fp_name="/tb_orx_test_bd_wrapper/clk">
+      <obj_property name="ElementShortName">clk</obj_property>
+      <obj_property name="ObjectShortName">clk</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/tb_orx_test_bd_wrapper/ext_reset_in">
+      <obj_property name="ElementShortName">ext_reset_in</obj_property>
+      <obj_property name="ObjectShortName">ext_reset_in</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/tb_orx_test_bd_wrapper/uut/orx_test_bd_i/tdd_simulation_0/tx_enable">
+      <obj_property name="ElementShortName">tx_enable</obj_property>
+      <obj_property name="ObjectShortName">tx_enable</obj_property>
+   </wvobject>
+   <wvobject fp_name="divider89" type="divider">
+      <obj_property name="label">CMD from DPD</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_orx_test_bd_wrapper/uut/orx_test_bd_i/dpd_cmd_simulation_0/m_axis_srx_ctrl_tdata">
+      <obj_property name="ElementShortName">m_axis_srx_ctrl_tdata[7:0]</obj_property>
+      <obj_property name="ObjectShortName">m_axis_srx_ctrl_tdata[7:0]</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/tb_orx_test_bd_wrapper/uut/orx_test_bd_i/dpd_cmd_simulation_0/m_axis_srx_ctrl_tvalid">
+      <obj_property name="ElementShortName">m_axis_srx_ctrl_tvalid</obj_property>
+      <obj_property name="ObjectShortName">m_axis_srx_ctrl_tvalid</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/tb_orx_test_bd_wrapper/uut/orx_test_bd_i/dpd_cmd_simulation_0/m_axis_srx_ctrl_tready">
+      <obj_property name="ElementShortName">m_axis_srx_ctrl_tready</obj_property>
+      <obj_property name="ObjectShortName">m_axis_srx_ctrl_tready</obj_property>
+   </wvobject>
+   <wvobject fp_name="divider90" type="divider">
+      <obj_property name="label">SRX STREAM</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_orx_test_bd_wrapper/m_axis_srx_tdata">
+      <obj_property name="ElementShortName">m_axis_srx_tdata[31:0]</obj_property>
+      <obj_property name="ObjectShortName">m_axis_srx_tdata[31:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_orx_test_bd_wrapper/m_axis_srx_tuser">
+      <obj_property name="ElementShortName">m_axis_srx_tuser[7:0]</obj_property>
+      <obj_property name="ObjectShortName">m_axis_srx_tuser[7:0]</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/tb_orx_test_bd_wrapper/m_axis_srx_tvalid">
+      <obj_property name="ElementShortName">m_axis_srx_tvalid</obj_property>
+      <obj_property name="ObjectShortName">m_axis_srx_tvalid</obj_property>
+   </wvobject>
+   <wvobject fp_name="divider92" type="divider">
+      <obj_property name="label">CMD TO IC</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_orx_test_bd_wrapper/orx1_enable">
+      <obj_property name="ElementShortName">orx1_enable[3:0]</obj_property>
+      <obj_property name="ObjectShortName">orx1_enable[3:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_orx_test_bd_wrapper/orx1_sel0">
+      <obj_property name="ElementShortName">orx1_sel0[3:0]</obj_property>
+      <obj_property name="ObjectShortName">orx1_sel0[3:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_orx_test_bd_wrapper/orx1_sel1">
+      <obj_property name="ElementShortName">orx1_sel1[3:0]</obj_property>
+      <obj_property name="ObjectShortName">orx1_sel1[3:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_orx_test_bd_wrapper/orx2_enable">
+      <obj_property name="ElementShortName">orx2_enable[3:0]</obj_property>
+      <obj_property name="ObjectShortName">orx2_enable[3:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_orx_test_bd_wrapper/orx2_sel0">
+      <obj_property name="ElementShortName">orx2_sel0[3:0]</obj_property>
+      <obj_property name="ObjectShortName">orx2_sel0[3:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/tb_orx_test_bd_wrapper/orx2_sel1">
+      <obj_property name="ElementShortName">orx2_sel1[3:0]</obj_property>
+      <obj_property name="ObjectShortName">orx2_sel1[3:0]</obj_property>
+   </wvobject>
+</wave_config>

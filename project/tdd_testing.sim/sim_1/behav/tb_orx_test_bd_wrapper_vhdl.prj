@@ -1,0 +1,26 @@
+# compile vhdl design source files
+vhdl xil_defaultlib  "../../../tdd_simulation.vhd"
+vhdl xil_defaultlib  "../../../dpd_cmd_simulation.vhd"
+vhdl xil_defaultlib  "../../../tdd_testing.ip_user_files/bd/orx_test_bd/ip/orx_test_bd_proc_sys_reset_0_0/sim/orx_test_bd_proc_sys_reset_0_0.vhd"
+vhdl xil_defaultlib  "../../../tdd_testing.ip_user_files/bd/orx_test_bd/ip/orx_test_bd_c_counter_binary_0_0/sim/orx_test_bd_c_counter_binary_0_0.vhd"
+vhdl xil_defaultlib  "../../../tdd_testing.ip_user_files/bd/orx_test_bd/ip/orx_test_bd_c_counter_binary_0_1/sim/orx_test_bd_c_counter_binary_0_1.vhd"
+vhdl xil_defaultlib  "../../../tdd_testing.ip_user_files/bd/orx_test_bd/ip/orx_test_bd_c_counter_binary_0_2/sim/orx_test_bd_c_counter_binary_0_2.vhd"
+vhdl xil_defaultlib  "../../../tdd_testing.ip_user_files/bd/orx_test_bd/ip/orx_test_bd_c_counter_binary_0_3/sim/orx_test_bd_c_counter_binary_0_3.vhd"
+vhdl util_ds_buf_v2_01_a  "../../../tdd_testing.srcs/sources_1/bd/orx_test_bd/ipshared/1e84/hdl/vhdl/util_ds_buf.vhd"
+vhdl xil_defaultlib  "../../../tdd_testing.ip_user_files/bd/orx_test_bd/ip/orx_test_bd_util_ds_buf_0_0/sim/orx_test_bd_util_ds_buf_0_0.vhd"
+vhdl xil_defaultlib  "../../../tdd_testing.ip_user_files/bd/orx_test_bd/ipshared/76e4/vt_orx_switch.vhd"
+vhdl xil_defaultlib  "../../../tdd_testing.ip_user_files/bd/orx_test_bd/ip/orx_test_bd_vt_orx_switch_1_0/sim/orx_test_bd_vt_orx_switch_1_0.vhd"
+vhdl xil_defaultlib  "../../../tdd_testing.ip_user_files/bd/orx_test_bd/ip/orx_test_bd_system_ila_1_0/bd_2/ip/ip_0/sim/bd_33ae_0_ila_lib_0.vhd"
+vhdl xil_defaultlib  "../../../tdd_testing.ip_user_files/bd/orx_test_bd/ip/orx_test_bd_system_ila_1_0/bd_2/hdl/bd_33ae_0.vhd"
+vhdl xil_defaultlib  "../../../tdd_testing.ip_user_files/bd/orx_test_bd/ip/orx_test_bd_system_ila_1_0/sim/orx_test_bd_system_ila_1_0.vhd"
+vhdl xil_defaultlib  "../../../tdd_testing.ip_user_files/bd/orx_test_bd/ip/orx_test_bd_tdd_simulation_1_0/sim/orx_test_bd_tdd_simulation_1_0.vhd"
+vhdl xil_defaultlib  "../../../tdd_testing.ip_user_files/bd/orx_test_bd/ip/orx_test_bd_dpd_cmd_simulation_0_0/sim/orx_test_bd_dpd_cmd_simulation_0_0.vhd"
+vhdl xil_defaultlib  "../../../tdd_testing.ip_user_files/bd/orx_test_bd/ip/orx_test_bd_system_ila_2_0/bd_0/ip/ip_0/sim/bd_335e_ila_lib_0.vhd"
+vhdl xil_defaultlib  "../../../tdd_testing.ip_user_files/bd/orx_test_bd/ip/orx_test_bd_system_ila_2_0/bd_0/hdl/bd_335e.vhd"
+vhdl xil_defaultlib  "../../../tdd_testing.ip_user_files/bd/orx_test_bd/ip/orx_test_bd_system_ila_2_0/sim/orx_test_bd_system_ila_2_0.vhd"
+vhdl xil_defaultlib  "../../../tdd_testing.ip_user_files/bd/orx_test_bd/hdl/orx_test_bd.vhd"
+vhdl xil_defaultlib  "../../../tdd_testing.srcs/sources_1/bd/orx_test_bd/hdl/orx_test_bd_wrapper.vhd"
+vhdl xil_defaultlib  "../../../tdd_testing.srcs/sim_1/new/tb_orx_test_bd_wrapper.vhd"
+
+# Do not sort compile order
+nosort
