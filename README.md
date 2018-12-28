@@ -18,6 +18,7 @@ Contents
   
 
 **2. Description<a id="part1"></a>**
+   
    **_IP CORE_** is used to control ORX switching of transceiver ADRV9009.
 - Input: command from Digital Pre-Distortion IP core, it is the index of antenna which DPD need to acquire data from.
 - Output: command to transceiver IC to order its stream processor to switch its internal data-path to required antenna.
