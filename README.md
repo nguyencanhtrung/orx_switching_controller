@@ -1,5 +1,4 @@
 #### IP CORE ORX_SWITCH_CONTROLLER
-#### FOR DOWNLINK IMPLEMENTATION
 ###### Version 2.0
 
 ---
@@ -25,12 +24,11 @@ Contents
 
   
 **3. Tools and language<a id="part2"></a>**
-  - _**Tools and working platform**_
    - Development board: ZCU102
    - Platform: Linux OS
    - Synthesize tool: Xilinx Vivado 2017.2
    - Simulation tool: ISIM
-- _** Language**_ : VHDL
+   - Language: VHDL
  
 ---
 Initial Setup Tutorial<a id="part5"></a>
