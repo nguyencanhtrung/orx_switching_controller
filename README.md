@@ -1,5 +1,4 @@
 #### IP CORE ORX_SWITCH_CONTROLLER
-#### FOR DOWNLINK IMPLEMENTATION
 ###### Version 2.0
 
 ---
@@ -13,23 +12,23 @@ Contents
 
 [5. Initial Setup](#part5)
 
-1. Author<a id="part4"></a>
+**1. Author<a id="part4"></a>**
   * [Trung C. Nguyen](mailto:nguyencanhtrung@me.com "Send an email to Trung")
   
 
-2. Description<a id="part1"></a>
+**2. Description<a id="part1"></a>**
+   
    **_IP CORE_** is used to control ORX switching of transceiver ADRV9009.
 - Input: command from Digital Pre-Distortion IP core, it is the index of antenna which DPD need to acquire data from.
 - Output: command to transceiver IC to order its stream processor to switch its internal data-path to required antenna.
 
   
-3. Tools and language<a id="part2"></a>
-  - _**Tools and working platform**_
+**3. Tools and language<a id="part2"></a>**
    - Development board: ZCU102
    - Platform: Linux OS
    - Synthesize tool: Xilinx Vivado 2017.2
    - Simulation tool: ISIM
-- _** Language**_ : VHDL
+   - Language: VHDL
  
 ---
 Initial Setup Tutorial<a id="part5"></a>
